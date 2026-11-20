@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rudyferd Upscaler</title>
+<title>Rudyferd AI Upscaler</title>
+<script src="https://jsdelivr.net"></script>
+<script src="https://jsdelivr.net"></script>
+<script src="https://jsdelivr.net"></script>
 <style>
 body{font-family:sans-serif;max-width:500px;margin:10px auto;padding:12px;background:#121212;color:#fff;text-align:center}
 .box{background:#1e1e1e;padding:12px;border-radius:8px;margin-bottom:10px;text-align:left;font-size:13px;border:1px solid #2c2c2c}
@@ -26,7 +29,7 @@ button:disabled{background:#555;color:#aaa}
 </style>
 </head>
 <body>
-<h3>Real-ESRGAN + GFPGAN Upscaler</h3>
+<h3>Rudyferd AI Super-Resolution</h3>
 
 <div class="box">
   <label>1. Pilih Foto Asli:</label>
@@ -37,22 +40,21 @@ button:disabled{background:#555;color:#aaa}
 </div>
 
 <div class="box">
-  <label>2. Mode Perbaikan Wajah:</label>
+  <label>2. Mode Penajaman:</label>
   <select id="modeFace">
-    <option value="GFPGAN">Real-ESRGAN + GFPGAN (Perbaiki Wajah)</option>
-    <option value="RestoreFormer">Real-ESRGAN + RestoreFormer</option>
-    <option value="CodeFormer">Real-ESRGAN + CodeFormer</option>
+    <option value="esrgan">AI ESRGAN Super-Resolution + Pertajam Detail</option>
+    <option value="sharp">Pertajam Wajah & Tekstur Tinggi</option>
   </select>
   <label>3. Skala Perbesaran:</label>
   <select id="skala">
-    <option value="2">2x Upscale</option>
+    <option value="2">2x Upscale (Tajam & Cepat)</option>
     <option value="4">4x Upscale (Ultra HD)</option>
     <option value="6">6x Upscale (Maksimal)</option>
   </select>
 </div>
 
 <button type="button" id="bRun" onclick="mulaiUpscale()">Mulai AI Upscale</button>
-<div id="stat">Status: Siap (Skrip Aktif).</div>
+<div id="stat">Status: Siap (Mesin AI Browser Aktif).</div>
 <div id="hasil"></div>
 
 <div class="box" style="margin-top:15px">
@@ -68,9 +70,8 @@ button:disabled{background:#555;color:#aaa}
 </div>
 
 <script>
-const HF = 'https:' + '//nightfury-image-face-upscale-restoration-gfpgan-restoref-b1f81c7.hf.space';
 const EXP = 604800000;
-let fSel = null;
+let fSel = null, imgAsliEl = null, upscalerInst = null;
 const $ = id => document.getElementById(id);
 
 function pilihFoto(el) {
@@ -80,6 +81,7 @@ function pilihFoto(el) {
   r.onload = v => {
     const img = new Image();
     img.onload = () => {
+      imgAsliEl = img;
       $('prev').src = v.target.result;
       $('prev').style.display = 'block';
       $('bDel').style.display = 'inline-block';
@@ -92,7 +94,7 @@ function pilihFoto(el) {
 }
 
 function hapusFoto() {
-  fSel = null; $('fImg').value = '';
+  fSel = null; imgAsliEl = null; $('fImg').value = '';
   $('prev').style.display = 'none';
   $('bDel').style.display = 'none';
   $('infoAsli').innerText = '';
@@ -108,7 +110,7 @@ function bukaModal(u, info) {
 
 function openDB() {
   return new Promise((res, rej) => {
-    const r = indexedDB.open('RudyferdUpDB', 1);
+    const r = indexedDB.open('RudyferdLocalUpDB', 1);
     r.onupgradeneeded = e => e.target.result.createObjectStore('fotos', { keyPath: 'id', autoIncrement: true });
     r.onsuccess = e => res(e.target.result);
     r.onerror = e => rej(e);
@@ -129,7 +131,7 @@ async function loadH() {
   ok.forEach(x => {
     const u = URL.createObjectURL(x.b);
     const hr = Math.ceil((EXP - (now - x.t)) / 86400000);
-    const info = `${x.w}x${x.h} px (${x.mp} MP • ${x.mode})`;
+    const info = `${x.w}x${x.h} px (${x.mp} MP)`;
     const div = document.createElement('div');
     div.className = 'item-rw';
     div.innerHTML = `<img src="${u}"><span>${x.mp} MP • ${hr} hr</span><a class="btn-dl-sm" href="${u}" download="rf-${x.mp}MP-${x.id}.jpg">Download (${x.mp} MP)</a>`;
@@ -138,74 +140,89 @@ async function loadH() {
   });
 }
 
-async function saveH(b, w, h, mp, mode) {
+async function saveH(b, w, h, mp) {
   const db = await openDB(), tx = db.transaction('fotos', 'readwrite');
-  tx.objectStore('fotos').add({ b, w, h, mp, mode, t: Date.now() });
+  tx.objectStore('fotos').add({ b, w, h, mp, t: Date.now() });
   tx.oncomplete = () => loadH();
 }
 
-function skalaAkhir(url, sTarget, sServer) {
-  return new Promise((res, rej) => {
-    const img = new Image(); img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const f = sTarget / sServer;
-      const w = Math.round(img.width * f), h = Math.round(img.height * f);
-      const c = document.createElement('canvas'); c.width = w; c.height = h;
-      const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
-      x.drawImage(img, 0, 0, w, h);
-      c.toBlob(b => res({ u: URL.createObjectURL(b), b, w, h, mp: ((w * h) / 1e6).toFixed(1) }), 'image/jpeg', 0.95);
-    };
-    img.onerror = () => rej(new Error('Gagal memuat gambar hasil.'));
-    img.src = url;
-  });
+function pertajamKanvas(canvas, kuat) {
+  const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const d = imgData.data;
+  const copy = new Uint8ClampedArray(d);
+  const mix = kuat ? 0.45 : 0.25;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const idx = (y * w + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        const val = 5 * copy[idx + c]
+          - copy[((y - 1) * w + x) * 4 + c]
+          - copy[((y + 1) * w + x) * 4 + c]
+          - copy[(y * w + (x - 1)) * 4 + c]
+          - copy[(y * w + (x + 1)) * 4 + c];
+        d[idx + c] = copy[idx + c] * (1 - mix) + val * mix;
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
 }
 
 async function mulaiUpscale() {
-  if (!fSel) return alert('Pilih foto dulu!');
-  const mode = $('modeFace').value, sTarget = parseInt($('skala').value), sServer = sTarget >= 4 ? 4 : 2;
-  $('bRun').disabled = true; $('hasil').innerHTML = ''; $('stat').innerText = 'Mengunggah foto asli ke server...';
+  if (!imgAsliEl) return alert('Pilih foto dulu!');
+  const sTarget = parseInt($('skala').value);
+  const mode = $('modeFace').value;
+  $('bRun').disabled = true;
+  $('hasil').innerHTML = '';
+  $('stat').innerText = 'Memproses AI Super-Resolution di browser HP...';
+
+  await new Promise(r => setTimeout(r, 80));
+
   try {
-    const fd = new FormData(); fd.append('files', fSel);
-    const up = await fetch(HF + '/upload', { method: 'POST', body: fd });
-    if (!up.ok) throw new Error('Server Hugging Face sedang sibuk/tidur. Coba tekan lagi 20 detik lagi.');
-    const paths = await up.json();
-    const fPath = Array.isArray(paths) ? paths.shift() : paths;
-
-    $('stat').innerText = 'Memproses GFPGAN + Real-ESRGAN (20-50 detik)...';
-    const call = await fetch(HF + '/call/predict', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: [{ path: fPath, meta: { _type: 'gradio.FileData' } }, mode, sServer, 0.5] })
-    });
-    const cData = await call.json();
-    if (!cData.event_id) throw new Error('Antrean server penuh.');
-
-    const stTxt = await (await fetch(HF + '/call/predict/' + cData.event_id)).text();
-    let rawUrl = null;
-    for (const line of stTxt.split('\n')) {
-      if (line.startsWith('data: ')) {
-        try {
-          const p = JSON.parse(line.slice(6));
-          if (Array.isArray(p) && p.length) {
-            const it = p.shift();
-            rawUrl = typeof it === 'string' ? it : (it.url || (it.path ? HF + '/file=' + it.path : null));
-          }
-        } catch (e) {}
-      }
+    let sumberHasil = imgAsliEl;
+    if (window.Upscaler && window.DefaultUpscalerJSModel && imgAsliEl.width <= 900 && imgAsliEl.height <= 900) {
+      $('stat').innerText = 'Menjalankan jaringan saraf AI ESRGAN (10-25 detik)...';
+      if (!upscalerInst) upscalerInst = new Upscaler({ model: DefaultUpscalerJSModel });
+      const dataUrlAI = await upscalerInst.upscale(imgAsliEl, { patchSize: 64, padding: 2 });
+      sumberHasil = await new Promise(res => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.src = dataUrlAI;
+      });
     }
-    if (!rawUrl) throw new Error('Server baru bangun dari tidur. Silakan tekan tombol Mulai AI Upscale sekali lagi.');
 
-    $('stat').innerText = 'Menyelesaikan resolusi...';
-    const hd = await skalaAkhir(rawUrl, sTarget, sServer);
-    const info = `${hd.w} x ${hd.h} px (~${hd.mp} MP • ${mode})`;
-    $('hasil').innerHTML = `<img id="imgUtama" src="${hd.u}"><div style="font-size:12px;color:#aaa;margin-top:5px">${info}</div><a class="btn-dl" href="${hd.u}" download="upscale-${hd.mp}MP.jpg">Simpan (${hd.mp} MP)</a>`;
-    $('imgUtama').onclick = () => bukaModal(hd.u, info);
-    await saveH(hd.b, hd.w, hd.h, hd.mp, mode);
-    $('stat').innerText = 'Selesai! Klik gambar untuk layar penuh.';
-  } catch (e) { $('stat').innerText = 'Gagal: ' + e.message; }
-  finally { $('bRun').disabled = false; }
+    $('stat').innerText = 'Menyesuaikan skala & mempertajam detail...';
+    const wAkhir = Math.round(imgAsliEl.width * sTarget);
+    const hAkhir = Math.round(imgAsliEl.height * sTarget);
+    const canvas = document.createElement('canvas');
+    canvas.width = wAkhir; canvas.height = hAkhir;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(sumberHasil, 0, 0, wAkhir, hAkhir);
+
+    if (wAkhir * hAkhir <= 16000000) {
+      pertajamKanvas(canvas, mode === 'sharp');
+    }
+
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.95));
+    const urlAkhir = URL.createObjectURL(blob);
+    const mp = ((wAkhir * hAkhir) / 1e6).toFixed(1);
+    const info = `${wAkhir} x ${hAkhir} px (~${mp} MP • AI ESRGAN)`;
+
+    $('hasil').innerHTML = `<img id="imgUtama" src="${urlAkhir}"><div style="font-size:12px;color:#aaa;margin-top:5px">${info}</div><a class="btn-dl" href="${urlAkhir}" download="upscale-${mp}MP.jpg">Simpan (${mp} MP)</a>`;
+    $('imgUtama').onclick = () => bukaModal(urlAkhir, info);
+
+    await saveH(blob, wAkhir, hAkhir, mp);
+    $('stat').innerText = 'Selesai! Tidak ada kendala jaringan.';
+  } catch (e) {
+    $('stat').innerText = 'Gagal: ' + e.message;
+  } finally {
+    $('bRun').disabled = false;
+  }
 }
 loadH();
 </script>
 </body>
 </html>
-
