@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rudyferd Real-ESRGAN + GFPGAN Upscaler</title>
+<title>Rudyferd Real-ESRGAN + GFPGAN</title>
 <style>
 body{font-family:sans-serif;max-width:500px;margin:12px auto;padding:12px;background:#121212;color:#fff;text-align:center}
 .box{background:#1e1e1e;padding:12px;border-radius:8px;margin-bottom:10px;text-align:left;font-size:13px;border:1px solid #2c2c2c}
@@ -12,11 +12,18 @@ select,button,input[type="file"]{width:100%;box-sizing:border-box;border-radius:
 select{padding:10px;background:#2c2c2c;color:#fff;margin-bottom:8px}
 button{padding:13px;background:#00b4d8;color:#000;font-weight:bold;font-size:15px;cursor:pointer}
 button:disabled{background:#555;color:#aaa}
-#prev{max-width:160px;max-height:160px;margin-top:8px;border-radius:6px;display:none;border:1px solid #444}
+#prev{max-width:180px;max-height:180px;margin-top:8px;border-radius:6px;display:none;border:1px solid #444}
+.btn-del{background:#333;color:#fff;font-size:11px;padding:5px 10px;width:auto;margin-top:6px;display:none}
 .btn-dl{display:block;background:#28a745;color:#fff;padding:11px;margin-top:8px;border-radius:6px;text-decoration:none;font-weight:bold;text-align:center}
-#hasil img{width:100%;border-radius:8px;margin-top:10px;border:1px solid #333}
+.btn-dl-sm{display:block;background:#28a745;color:#fff;padding:6px;margin-top:5px;border-radius:5px;text-decoration:none;font-size:11px;text-align:center;font-weight:bold}
+#hasil img{width:100%;border-radius:8px;margin-top:10px;border:1px solid #333;cursor:pointer}
 #stat{margin:10px 0;font-size:13px;color:#ffd166;font-weight:bold}
-.tips{font-size:11px;color:#aaa;margin-top:4px;line-height:1.4}
+#riwayat{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+.item-rw{background:#262626;padding:6px;border-radius:6px;font-size:10px;color:#aaa;text-align:center}
+.item-rw img{width:100%;height:120px;object-fit:cover;border-radius:4px;display:block;margin-bottom:4px;cursor:pointer}
+#modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:999;padding:15px;box-sizing:border-box;overflow-y:auto}
+#modal img{max-width:100%;max-height:78vh;border-radius:8px;margin-top:15px}
+#modalBtn{background:#e63946;color:#fff;margin-top:12px;width:auto;padding:10px 25px}
 </style>
 </head>
 <body>
@@ -25,7 +32,9 @@ button:disabled{background:#555;color:#aaa}
 <div class="box">
   <label>1. Pilih Foto Asli (Ukuran Asli Tanpa Dikecilkan):</label>
   <input type="file" id="fImg" accept="image/*">
-  <img id="prev">
+  <img id="prev" alt="Pratinjau Upload">
+  <div id="infoAsli" style="font-size:11px;color:#aaa;margin-top:4px"></div>
+  <button type="button" id="bDel" class="btn-del">Hapus Foto</button>
 </div>
 
 <div class="box">
@@ -42,14 +51,26 @@ button:disabled{background:#555;color:#aaa}
     <option value="4">4x Upscale (Ultra HD / Adobe Stock)</option>
     <option value="6">6x Upscale (Maksimal)</option>
   </select>
-  <div class="tips">Memproses resolusi asli foto Anda langsung menggunakan server AI Real-ESRGAN & GFPGAN.</div>
 </div>
 
 <button type="button" id="bRun">Mulai AI Upscale & Perbaiki Wajah</button>
 <div id="stat">Siap digunakan.</div>
 <div id="hasil"></div>
 
-<script type="module" src="upscale.js?v=1"></script>
+<div class="box" style="margin-top:15px">
+  <label>Riwayat 10 Foto Terakhir (Klik foto untuk lihat penuh • Terhapus otomatis 7 hari):</label>
+  <div id="riwayat"></div>
+</div>
+
+<div id="modal">
+  <div id="modalInfo" style="font-size:13px;color:#ffd166;font-weight:bold"></div>
+  <img id="modalImg" alt="Tampilan Penuh">
+  <div><a id="modalDl" class="btn-dl" style="max-width:250px;margin:10px auto">Download Ukuran Penuh</a></div>
+  <button type="button" id="modalBtn">Tutup Tampilan Penuh</button>
+</div>
+
+<script src="upscale.js?v=2"></script>
 </body>
 </html>
+
 
