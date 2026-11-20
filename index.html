@@ -3,74 +3,209 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rudyferd Real-ESRGAN + GFPGAN</title>
+<title>Rudyferd Upscaler</title>
 <style>
-body{font-family:sans-serif;max-width:500px;margin:12px auto;padding:12px;background:#121212;color:#fff;text-align:center}
+body{font-family:sans-serif;max-width:500px;margin:10px auto;padding:12px;background:#121212;color:#fff;text-align:center}
 .box{background:#1e1e1e;padding:12px;border-radius:8px;margin-bottom:10px;text-align:left;font-size:13px;border:1px solid #2c2c2c}
-label{display:block;margin-bottom:5px;font-weight:bold;color:#eee}
+label{display:block;margin-bottom:5px;font-weight:bold}
 select,button,input[type="file"]{width:100%;box-sizing:border-box;border-radius:6px;border:none;font-size:14px}
 select{padding:10px;background:#2c2c2c;color:#fff;margin-bottom:8px}
-button{padding:13px;background:#00b4d8;color:#000;font-weight:bold;font-size:15px;cursor:pointer}
+button{padding:13px;background:#00b4d8;color:#000;font-weight:bold;font-size:15px}
 button:disabled{background:#555;color:#aaa}
-#prev{max-width:180px;max-height:180px;margin-top:8px;border-radius:6px;display:none;border:1px solid #444}
+#prev{max-width:160px;margin-top:8px;border-radius:6px;display:none}
 .btn-del{background:#333;color:#fff;font-size:11px;padding:5px 10px;width:auto;margin-top:6px;display:none}
-.btn-dl{display:block;background:#28a745;color:#fff;padding:11px;margin-top:8px;border-radius:6px;text-decoration:none;font-weight:bold;text-align:center}
-.btn-dl-sm{display:block;background:#28a745;color:#fff;padding:6px;margin-top:5px;border-radius:5px;text-decoration:none;font-size:11px;text-align:center;font-weight:bold}
-#hasil img{width:100%;border-radius:8px;margin-top:10px;border:1px solid #333;cursor:pointer}
+.btn-dl{display:block;background:#28a745;color:#fff;padding:10px;margin-top:8px;border-radius:6px;text-decoration:none;font-weight:bold;text-align:center}
+.btn-dl-sm{display:block;background:#28a745;color:#fff;padding:6px;margin-top:5px;border-radius:5px;text-decoration:none;font-size:11px;text-align:center}
+#hasil img{width:100%;border-radius:8px;margin-top:10px;cursor:pointer}
 #stat{margin:10px 0;font-size:13px;color:#ffd166;font-weight:bold}
 #riwayat{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
 .item-rw{background:#262626;padding:6px;border-radius:6px;font-size:10px;color:#aaa;text-align:center}
-.item-rw img{width:100%;height:120px;object-fit:cover;border-radius:4px;display:block;margin-bottom:4px;cursor:pointer}
+.item-rw img{width:100%;height:110px;object-fit:cover;border-radius:4px;display:block;margin-bottom:4px;cursor:pointer}
 #modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:999;padding:15px;box-sizing:border-box;overflow-y:auto}
-#modal img{max-width:100%;max-height:78vh;border-radius:8px;margin-top:15px}
-#modalBtn{background:#e63946;color:#fff;margin-top:12px;width:auto;padding:10px 25px}
+#modal img{max-width:100%;max-height:75vh;border-radius:8px;margin-top:10px}
 </style>
 </head>
 <body>
 <h3>Real-ESRGAN + GFPGAN Upscaler</h3>
 
 <div class="box">
-  <label>1. Pilih Foto Asli (Ukuran Asli Tanpa Dikecilkan):</label>
-  <input type="file" id="fImg" accept="image/*">
-  <img id="prev" alt="Pratinjau Upload">
+  <label>1. Pilih Foto Asli:</label>
+  <input type="file" id="fImg" accept="image/*" onchange="pilihFoto(this)">
+  <img id="prev">
   <div id="infoAsli" style="font-size:11px;color:#aaa;margin-top:4px"></div>
-  <button type="button" id="bDel" class="btn-del">Hapus Foto</button>
+  <button type="button" id="bDel" class="btn-del" onclick="hapusFoto()">Hapus Foto</button>
 </div>
 
 <div class="box">
-  <label>2. Mode Perbaikan Wajah & Latar:</label>
+  <label>2. Mode Perbaikan Wajah:</label>
   <select id="modeFace">
-    <option value="GFPGAN">Real-ESRGAN + GFPGAN (Pertajam & Perbaiki Wajah)</option>
-    <option value="RestoreFormer">Real-ESRGAN + RestoreFormer (Wajah Detail)</option>
-    <option value="CodeFormer">Real-ESRGAN + CodeFormer (Wajah Natural)</option>
+    <option value="GFPGAN">Real-ESRGAN + GFPGAN (Perbaiki Wajah)</option>
+    <option value="RestoreFormer">Real-ESRGAN + RestoreFormer</option>
+    <option value="CodeFormer">Real-ESRGAN + CodeFormer</option>
   </select>
-
-  <label>3. Skala Perbesaran Akhir:</label>
+  <label>3. Skala Perbesaran:</label>
   <select id="skala">
-    <option value="2">2x Upscale (Tajam & Cepat)</option>
-    <option value="4">4x Upscale (Ultra HD / Adobe Stock)</option>
+    <option value="2">2x Upscale</option>
+    <option value="4">4x Upscale (Ultra HD)</option>
     <option value="6">6x Upscale (Maksimal)</option>
   </select>
 </div>
 
-<button type="button" id="bRun">Mulai AI Upscale & Perbaiki Wajah</button>
-<div id="stat">Siap digunakan.</div>
+<button type="button" id="bRun" onclick="mulaiUpscale()">Mulai AI Upscale</button>
+<div id="stat">Status: Siap (Skrip Aktif).</div>
 <div id="hasil"></div>
 
 <div class="box" style="margin-top:15px">
-  <label>Riwayat 10 Foto Terakhir (Klik foto untuk lihat penuh • Terhapus otomatis 7 hari):</label>
+  <label>Riwayat 10 Foto (Klik foto untuk lihat penuh • Hapus otomatis 7 hari):</label>
   <div id="riwayat"></div>
 </div>
 
 <div id="modal">
   <div id="modalInfo" style="font-size:13px;color:#ffd166;font-weight:bold"></div>
-  <img id="modalImg" alt="Tampilan Penuh">
-  <div><a id="modalDl" class="btn-dl" style="max-width:250px;margin:10px auto">Download Ukuran Penuh</a></div>
-  <button type="button" id="modalBtn">Tutup Tampilan Penuh</button>
+  <img id="modalImg">
+  <a id="modalDl" class="btn-dl" style="max-width:240px;margin:10px auto">Download Ukuran Penuh</a>
+  <button type="button" style="background:#e63946;color:#fff;width:auto;padding:10px 25px" onclick="document.getElementById('modal').style.display='none'">Tutup</button>
 </div>
 
-<script src="upscale.js?v=2"></script>
+<script>
+const HF = 'https:' + '//nightfury-image-face-upscale-restoration-gfpgan-restoref-b1f81c7.hf.space';
+const EXP = 604800000;
+let fSel = null;
+const $ = id => document.getElementById(id);
+
+function pilihFoto(el) {
+  fSel = el.files.item(0);
+  if (!fSel) return;
+  const r = new FileReader();
+  r.onload = v => {
+    const img = new Image();
+    img.onload = () => {
+      $('prev').src = v.target.result;
+      $('prev').style.display = 'block';
+      $('bDel').style.display = 'inline-block';
+      $('infoAsli').innerText = `Ukuran asli: ${img.width} x ${img.height} px`;
+      $('stat').innerText = 'Foto siap di-upscale.';
+    };
+    img.src = v.target.result;
+  };
+  r.readAsDataURL(fSel);
+}
+
+function hapusFoto() {
+  fSel = null; $('fImg').value = '';
+  $('prev').style.display = 'none';
+  $('bDel').style.display = 'none';
+  $('infoAsli').innerText = '';
+}
+
+function bukaModal(u, info) {
+  $('modalImg').src = u;
+  $('modalInfo').innerText = info;
+  $('modalDl').href = u;
+  $('modalDl').download = 'upscale-penuh.jpg';
+  $('modal').style.display = 'block';
+}
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('RudyferdUpDB', 1);
+    r.onupgradeneeded = e => e.target.result.createObjectStore('fotos', { keyPath: 'id', autoIncrement: true });
+    r.onsuccess = e => res(e.target.result);
+    r.onerror = e => rej(e);
+  });
+}
+
+async function loadH() {
+  const db = await openDB(), tx = db.transaction('fotos', 'readwrite'), st = tx.objectStore('fotos'), now = Date.now();
+  const all = await new Promise(r => { const q = st.getAll(); q.onsuccess = () => r(q.result || []); });
+  all.sort((a, b) => b.t - a.t);
+  const ok = [];
+  for (const x of all) {
+    if (now - x.t >= EXP || ok.length >= 10) st.delete(x.id);
+    else ok.push(x);
+  }
+  $('riwayat').innerHTML = '';
+  if (!ok.length) { $('riwayat').innerHTML = '<div style="grid-column:1/-1;color:#888">Belum ada riwayat.</div>'; return; }
+  ok.forEach(x => {
+    const u = URL.createObjectURL(x.b);
+    const hr = Math.ceil((EXP - (now - x.t)) / 86400000);
+    const info = `${x.w}x${x.h} px (${x.mp} MP • ${x.mode})`;
+    const div = document.createElement('div');
+    div.className = 'item-rw';
+    div.innerHTML = `<img src="${u}"><span>${x.mp} MP • ${hr} hr</span><a class="btn-dl-sm" href="${u}" download="rf-${x.mp}MP-${x.id}.jpg">Download (${x.mp} MP)</a>`;
+    div.querySelector('img').onclick = () => bukaModal(u, info);
+    $('riwayat').appendChild(div);
+  });
+}
+
+async function saveH(b, w, h, mp, mode) {
+  const db = await openDB(), tx = db.transaction('fotos', 'readwrite');
+  tx.objectStore('fotos').add({ b, w, h, mp, mode, t: Date.now() });
+  tx.oncomplete = () => loadH();
+}
+
+function skalaAkhir(url, sTarget, sServer) {
+  return new Promise((res, rej) => {
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const f = sTarget / sServer;
+      const w = Math.round(img.width * f), h = Math.round(img.height * f);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+      x.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => res({ u: URL.createObjectURL(b), b, w, h, mp: ((w * h) / 1e6).toFixed(1) }), 'image/jpeg', 0.95);
+    };
+    img.onerror = () => rej(new Error('Gagal memuat gambar hasil.'));
+    img.src = url;
+  });
+}
+
+async function mulaiUpscale() {
+  if (!fSel) return alert('Pilih foto dulu!');
+  const mode = $('modeFace').value, sTarget = parseInt($('skala').value), sServer = sTarget >= 4 ? 4 : 2;
+  $('bRun').disabled = true; $('hasil').innerHTML = ''; $('stat').innerText = 'Mengunggah foto asli ke server...';
+  try {
+    const fd = new FormData(); fd.append('files', fSel);
+    const up = await fetch(HF + '/upload', { method: 'POST', body: fd });
+    if (!up.ok) throw new Error('Server Hugging Face sedang sibuk/tidur. Coba tekan lagi 20 detik lagi.');
+    const paths = await up.json();
+    const fPath = Array.isArray(paths) ? paths.shift() : paths;
+
+    $('stat').innerText = 'Memproses GFPGAN + Real-ESRGAN (20-50 detik)...';
+    const call = await fetch(HF + '/call/predict', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: [{ path: fPath, meta: { _type: 'gradio.FileData' } }, mode, sServer, 0.5] })
+    });
+    const cData = await call.json();
+    if (!cData.event_id) throw new Error('Antrean server penuh.');
+
+    const stTxt = await (await fetch(HF + '/call/predict/' + cData.event_id)).text();
+    let rawUrl = null;
+    for (const line of stTxt.split('\n')) {
+      if (line.startsWith('data: ')) {
+        try {
+          const p = JSON.parse(line.slice(6));
+          if (Array.isArray(p) && p.length) {
+            const it = p.shift();
+            rawUrl = typeof it === 'string' ? it : (it.url || (it.path ? HF + '/file=' + it.path : null));
+          }
+        } catch (e) {}
+      }
+    }
+    if (!rawUrl) throw new Error('Server baru bangun dari tidur. Silakan tekan tombol Mulai AI Upscale sekali lagi.');
+
+    $('stat').innerText = 'Menyelesaikan resolusi...';
+    const hd = await skalaAkhir(rawUrl, sTarget, sServer);
+    const info = `${hd.w} x ${hd.h} px (~${hd.mp} MP • ${mode})`;
+    $('hasil').innerHTML = `<img id="imgUtama" src="${hd.u}"><div style="font-size:12px;color:#aaa;margin-top:5px">${info}</div><a class="btn-dl" href="${hd.u}" download="upscale-${hd.mp}MP.jpg">Simpan (${hd.mp} MP)</a>`;
+    $('imgUtama').onclick = () => bukaModal(hd.u, info);
+    await saveH(hd.b, hd.w, hd.h, hd.mp, mode);
+    $('stat').innerText = 'Selesai! Klik gambar untuk layar penuh.';
+  } catch (e) { $('stat').innerText = 'Gagal: ' + e.message; }
+  finally { $('bRun').disabled = false; }
+}
+loadH();
+</script>
 </body>
 </html>
-
 
