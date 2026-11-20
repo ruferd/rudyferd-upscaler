@@ -3,10 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rudyferd AI Upscaler</title>
-<script src="https://jsdelivr.net"></script>
-<script src="https://jsdelivr.net"></script>
-<script src="https://jsdelivr.net"></script>
+<title>Rudyferd HD Upscaler</title>
 <style>
 body{font-family:sans-serif;max-width:500px;margin:10px auto;padding:12px;background:#121212;color:#fff;text-align:center}
 .box{background:#1e1e1e;padding:12px;border-radius:8px;margin-bottom:10px;text-align:left;font-size:13px;border:1px solid #2c2c2c}
@@ -29,7 +26,7 @@ button:disabled{background:#555;color:#aaa}
 </style>
 </head>
 <body>
-<h3>Rudyferd AI Super-Resolution</h3>
+<h3>Rudyferd HD Super-Resolution</h3>
 
 <div class="box">
   <label>1. Pilih Foto Asli:</label>
@@ -40,10 +37,10 @@ button:disabled{background:#555;color:#aaa}
 </div>
 
 <div class="box">
-  <label>2. Mode Penajaman:</label>
+  <label>2. Mode Penajaman Detail:</label>
   <select id="modeFace">
-    <option value="esrgan">AI ESRGAN Super-Resolution + Pertajam Detail</option>
-    <option value="sharp">Pertajam Wajah & Tekstur Tinggi</option>
+    <option value="natural">Halus & Natural (Wajah & Kulit)</option>
+    <option value="tajam">Ekstra Tajam (Objek, Bangunan & Teks)</option>
   </select>
   <label>3. Skala Perbesaran:</label>
   <select id="skala">
@@ -53,8 +50,8 @@ button:disabled{background:#555;color:#aaa}
   </select>
 </div>
 
-<button type="button" id="bRun" onclick="mulaiUpscale()">Mulai AI Upscale</button>
-<div id="stat">Status: Siap (Mesin AI Browser Aktif).</div>
+<button type="button" id="bRun" onclick="mulaiUpscale()">Mulai Perbesar & Pertajam</button>
+<div id="stat">Status: Siap (100% Lokal Anti-Blokir).</div>
 <div id="hasil"></div>
 
 <div class="box" style="margin-top:15px">
@@ -71,7 +68,7 @@ button:disabled{background:#555;color:#aaa}
 
 <script>
 const EXP = 604800000;
-let fSel = null, imgAsliEl = null, upscalerInst = null;
+let fSel = null, imgAsliEl = null;
 const $ = id => document.getElementById(id);
 
 function pilihFoto(el) {
@@ -86,7 +83,7 @@ function pilihFoto(el) {
       $('prev').style.display = 'block';
       $('bDel').style.display = 'inline-block';
       $('infoAsli').innerText = `Ukuran asli: ${img.width} x ${img.height} px`;
-      $('stat').innerText = 'Foto siap di-upscale.';
+      $('stat').innerText = 'Foto siap diperbesar.';
     };
     img.src = v.target.result;
   };
@@ -110,7 +107,7 @@ function bukaModal(u, info) {
 
 function openDB() {
   return new Promise((res, rej) => {
-    const r = indexedDB.open('RudyferdLocalUpDB', 1);
+    const r = indexedDB.open('RudyferdPureUpDB', 1);
     r.onupgradeneeded = e => e.target.result.createObjectStore('fotos', { keyPath: 'id', autoIncrement: true });
     r.onsuccess = e => res(e.target.result);
     r.onerror = e => rej(e);
@@ -146,23 +143,29 @@ async function saveH(b, w, h, mp) {
   tx.oncomplete = () => loadH();
 }
 
-function pertajamKanvas(canvas, kuat) {
+function unsharpMask(canvas, kekuatan) {
   const w = canvas.width, h = canvas.height;
   const ctx = canvas.getContext('2d');
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
   const copy = new Uint8ClampedArray(d);
-  const mix = kuat ? 0.45 : 0.25;
   for (let y = 1; y < h - 1; y++) {
     for (let x = 1; x < w - 1; x++) {
       const idx = (y * w + x) * 4;
       for (let c = 0; c < 3; c++) {
-        const val = 5 * copy[idx + c]
-          - copy[((y - 1) * w + x) * 4 + c]
-          - copy[((y + 1) * w + x) * 4 + c]
-          - copy[(y * w + (x - 1)) * 4 + c]
-          - copy[(y * w + (x + 1)) * 4 + c];
-        d[idx + c] = copy[idx + c] * (1 - mix) + val * mix;
+        const blur = (
+          copy[((y - 1) * w + (x - 1)) * 4 + c] +
+          copy[((y - 1) * w + x) * 4 + c] * 2 +
+          copy[((y - 1) * w + (x + 1)) * 4 + c] +
+          copy[(y * w + (x - 1)) * 4 + c] * 2 +
+          copy[idx + c] * 4 +
+          copy[(y * w + (x + 1)) * 4 + c] * 2 +
+          copy[((y + 1) * w + (x - 1)) * 4 + c] +
+          copy[((y + 1) * w + x) * 4 + c] * 2 +
+          copy[((y + 1) * w + (x + 1)) * 4 + c]
+        ) / 16;
+        const detail = copy[idx + c] - blur;
+        d[idx + c] = Math.min(255, Math.max(0, copy[idx + c] + detail * kekuatan));
       }
     }
   }
@@ -175,47 +178,54 @@ async function mulaiUpscale() {
   const mode = $('modeFace').value;
   $('bRun').disabled = true;
   $('hasil').innerHTML = '';
-  $('stat').innerText = 'Memproses AI Super-Resolution di browser HP...';
+  $('stat').innerText = 'Memperbesar resolusi secara bertahap...';
 
-  await new Promise(r => setTimeout(r, 80));
+  await new Promise(r => setTimeout(r, 60));
 
   try {
-    let sumberHasil = imgAsliEl;
-    if (window.Upscaler && window.DefaultUpscalerJSModel && imgAsliEl.width <= 900 && imgAsliEl.height <= 900) {
-      $('stat').innerText = 'Menjalankan jaringan saraf AI ESRGAN (10-25 detik)...';
-      if (!upscalerInst) upscalerInst = new Upscaler({ model: DefaultUpscalerJSModel });
-      const dataUrlAI = await upscalerInst.upscale(imgAsliEl, { patchSize: 64, padding: 2 });
-      sumberHasil = await new Promise(res => {
-        const im = new Image();
-        im.onload = () => res(im);
-        im.src = dataUrlAI;
-      });
-    }
+    let curCanvas = document.createElement('canvas');
+    curCanvas.width = imgAsliEl.width;
+    curCanvas.height = imgAsliEl.height;
+    curCanvas.getContext('2d').drawImage(imgAsliEl, 0, 0);
 
-    $('stat').innerText = 'Menyesuaikan skala & mempertajam detail...';
     const wAkhir = Math.round(imgAsliEl.width * sTarget);
     const hAkhir = Math.round(imgAsliEl.height * sTarget);
-    const canvas = document.createElement('canvas');
-    canvas.width = wAkhir; canvas.height = hAkhir;
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(sumberHasil, 0, 0, wAkhir, hAkhir);
 
-    if (wAkhir * hAkhir <= 16000000) {
-      pertajamKanvas(canvas, mode === 'sharp');
+    while (curCanvas.width * 1.5 < wAkhir) {
+      const nextW = Math.round(curCanvas.width * 1.5);
+      const nextH = Math.round(curCanvas.height * 1.5);
+      const stepCanvas = document.createElement('canvas');
+      stepCanvas.width = nextW; stepCanvas.height = nextH;
+      const sCtx = stepCanvas.getContext('2d');
+      sCtx.imageSmoothingEnabled = true;
+      sCtx.imageSmoothingQuality = 'high';
+      sCtx.drawImage(curCanvas, 0, 0, nextW, nextH);
+      curCanvas = stepCanvas;
     }
 
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.95));
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = wAkhir; finalCanvas.height = hAkhir;
+    const fCtx = finalCanvas.getContext('2d');
+    fCtx.imageSmoothingEnabled = true;
+    fCtx.imageSmoothingQuality = 'high';
+    fCtx.drawImage(curCanvas, 0, 0, wAkhir, hAkhir);
+
+    if (wAkhir * hAkhir <= 25000000) {
+      $('stat').innerText = 'Mempertajam tepi & detail gambar...';
+      await new Promise(r => setTimeout(r, 40));
+      unsharpMask(finalCanvas, mode === 'tajam' ? 0.95 : 0.55);
+    }
+
+    const blob = await new Promise(res => finalCanvas.toBlob(res, 'image/jpeg', 0.95));
     const urlAkhir = URL.createObjectURL(blob);
     const mp = ((wAkhir * hAkhir) / 1e6).toFixed(1);
-    const info = `${wAkhir} x ${hAkhir} px (~${mp} MP • AI ESRGAN)`;
+    const info = `${wAkhir} x ${hAkhir} px (~${mp} MP)`;
 
     $('hasil').innerHTML = `<img id="imgUtama" src="${urlAkhir}"><div style="font-size:12px;color:#aaa;margin-top:5px">${info}</div><a class="btn-dl" href="${urlAkhir}" download="upscale-${mp}MP.jpg">Simpan (${mp} MP)</a>`;
     $('imgUtama').onclick = () => bukaModal(urlAkhir, info);
 
     await saveH(blob, wAkhir, hAkhir, mp);
-    $('stat').innerText = 'Selesai! Tidak ada kendala jaringan.';
+    $('stat').innerText = 'Selesai! Tidak ada pemanggilan server luar.';
   } catch (e) {
     $('stat').innerText = 'Gagal: ' + e.message;
   } finally {
